@@ -63,6 +63,7 @@ class Shelf:
     def add_pallet(self, pallet):
         self.pallets.append(pallet)
         self.numOfPallets += 1
+        print("Pallet of category " + pallet.category + " added.")
 
 class Europallet:
     def __init__(self, category):
@@ -78,5 +79,3 @@ racks = [Rack(bays) for i in range(NUM_OF_RACKS)]
 
 pallet = Europallet(category='B')
 racks[0].bays[0].add_pallet(pallet)
-
-print('a')
