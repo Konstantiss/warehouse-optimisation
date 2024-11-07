@@ -23,22 +23,32 @@ class Bay:
 
     def add_pallet(self, pallet):
         if pallet.category == 'A':
-            #Category A items can be placed on the bottom shelves. Here the bottom shelf is consider to be index 0.
+
+            '''
+            Category A items can be placed on the bottom shelves. 
+            Here the bottom shelf is consider to be index 0.
+            '''
+
             if len(self.shelves[0].pallets) < self.shelves[0].maxNumOfPallets:
-                self.shelves[0].pallets.append(pallet)
+                self.shelves[0].add_pallet(pallet)
             else:
                 print("Error! Maximum number of pallets reached for this shelf.")
         elif pallet.category == 'B':
-            #Category B items can be placed on the bottom shelves. Here the bottom shelf is consider to be the maxium index.
-            if len(self.shelves[-1].pallets) < self.shelves[-1].maxNumOfPallets:
-                self.shelves[-1].pallets.append(pallet)
+
+            '''
+            Category B items can be placed on the bottom shelves. 
+            Here the bottom shelf is consider to be the maxium index.
+            '''
+
+            if self.shelves[-1].numOfPallets < self.shelves[-1].maxNumOfPallets:
+                self.shelves[-1].add_pallet(pallet)
             else:
                 print("Error! Maximum number of pallets reached for this shelf.")
         else:
             for shelf in self.shelves:
                 palletAdded = False
                 if len(shelf.pallets) < shelf.maxNumOfPallets:
-                    shelf.pallets.append(pallet)
+                    shelf.add_pallet(pallet)
                     palletAdded = True
                 else:
                     print("Error! Maximum number of pallets reached for this shelf.")
@@ -47,14 +57,18 @@ class Bay:
 
 class Shelf:
     def __init__(self, pallets):
+        self.numOfPallets = 0
         self.maxNumOfPallets = PALLETS_PER_SHELF
         self.pallets = pallets
+    def add_pallet(self, pallet):
+        self.pallets.append(pallet)
+        self.numOfPallets += 1
 
 class Europallet:
     def __init__(self, category):
         self.category = category
 
-pallets = [Europallet(category='A') for i in range(PALLETS_PER_SHELF)]
+pallets = []
 
 shelves = [Shelf(pallets) for i in range(SHELVES_PER_BAY)]
 
@@ -62,3 +76,7 @@ bays = [Bay(shelves) for i in range(BAYS_PER_RACK)]
 
 racks = [Rack(bays) for i in range(NUM_OF_RACKS)]
 
+pallet = Europallet(category='B')
+racks[0].bays[0].add_pallet(pallet)
+
+print('a')
