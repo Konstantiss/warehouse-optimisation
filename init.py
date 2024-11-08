@@ -1,3 +1,5 @@
+from unicodedata import category
+
 import pandas as pd
 
 inputs = pd.read_csv('warehouse_log_inputs.csv')
@@ -7,22 +9,33 @@ NUM_OF_RACKS = 2
 BAYS_PER_RACK = 10
 SHELVES_PER_BAY = 4
 PALLETS_PER_SHELF = 3
-SHELF_HEIGHT = 1.8
-BAY_WIDTH = 3
-FORKLIFT_MOVE_SPEED = 1.2 #m/s
-FORKLIFT_LIFT_SPEED = 0.5 #m/s
-PALLET_WIDTH = 0.8
+SHELF_HEIGHT = 1.8 #meters
+BAY_WIDTH = 3 #meters
+PALLET_WIDTH = 0.8 #meters
+FORKLIFT_MOVE_SPEED = 1.2 #meters/second
+FORKLIFT_LIFT_SPEED = 0.5 #meters/second
+PLACEMENT_TIME = 1 #second
 
-class Rack:
-    def __init__(self, bays):
-        self.bays = bays
+class Europallet:
+    def __init__(self, category):
+        self.category = category
+
+class Shelf:
+    def __init__(self):
+        self.numOfPallets = 0
+        self.maxNumOfPallets = PALLETS_PER_SHELF
+        self.pallets = []
+    def add_pallet(self, pallet):
+        self.pallets.append(pallet)
+        self.numOfPallets += 1
+        print("Pallet of " + pallet.category + " added.")
 
 class Bay:
-    def __init__(self, shelves):
-        self.shelves = shelves
+    def __init__(self):
+        self.shelves = [Shelf() for i in range(SHELVES_PER_BAY)]
 
     def add_pallet(self, pallet):
-        if pallet.category == 'A':
+        if pallet.category == 'Category A':
 
             '''
             Category A items can be placed on the bottom shelves. 
@@ -33,11 +46,11 @@ class Bay:
                 self.shelves[0].add_pallet(pallet)
             else:
                 print("Error! Maximum number of pallets reached for this shelf.")
-        elif pallet.category == 'B':
+        elif pallet.category == 'Category B':
 
             '''
             Category B items can be placed on the bottom shelves. 
-            Here the bottom shelf is consider to be the maxium index.
+            Here the bottom shelf is consider to be the maximum index.
             '''
 
             if self.shelves[-1].numOfPallets < self.shelves[-1].maxNumOfPallets:
@@ -47,35 +60,32 @@ class Bay:
         else:
             for shelf in self.shelves:
                 palletAdded = False
-                if len(shelf.pallets) < shelf.maxNumOfPallets:
+                if shelf.numOfPallets < shelf.maxNumOfPallets:
                     shelf.add_pallet(pallet)
                     palletAdded = True
                 else:
                     print("Error! Maximum number of pallets reached for this shelf.")
                 if palletAdded:
+                    print("Pallet added.")
                     break
 
-class Shelf:
-    def __init__(self, pallets):
-        self.numOfPallets = 0
-        self.maxNumOfPallets = PALLETS_PER_SHELF
-        self.pallets = pallets
-    def add_pallet(self, pallet):
-        self.pallets.append(pallet)
-        self.numOfPallets += 1
-        print("Pallet of category " + pallet.category + " added.")
+class Rack:
+    def __init__(self):
+        self.bays = [Bay() for i in range(BAYS_PER_RACK)]
 
-class Europallet:
-    def __init__(self, category):
-        self.category = category
 
-pallets = []
+racks = [Rack() for i in range(NUM_OF_RACKS)]
 
-shelves = [Shelf(pallets) for i in range(SHELVES_PER_BAY)]
+inputs['Date'] = pd.to_datetime(inputs['Date'], format="%d/%m/%Y")
 
-bays = [Bay(shelves) for i in range(BAYS_PER_RACK)]
+for date, day_data in inputs.groupby(inputs['Date'].dt.date):
+    for index, row in day_data.iterrows():
+        rack = int(row['Rack'].split('Rack ')[1])
+        bay = int(row['Bay'])
+        category = row['Category']
+        pallet = Europallet(category=category)
+        racks[rack - 1].bays[bay - 1].add_pallet(pallet)
+    print(f"Processed data for {date}")
 
-racks = [Rack(bays) for i in range(NUM_OF_RACKS)]
 
-pallet = Europallet(category='B')
-racks[0].bays[0].add_pallet(pallet)
+
