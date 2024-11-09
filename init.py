@@ -12,8 +12,8 @@ PALLETS_PER_SHELF = 3
 SHELF_HEIGHT = 1.8  # meters
 BAY_WIDTH = 3  # meters
 PALLET_WIDTH = 0.8  # meters
-DROP_OFF_TO_AISLE_DISTANCE = 5 # meters
-PICK_UP_TO_AISLE_DISTANCE = 5 # meters
+DROP_OFF_TO_AISLE_DISTANCE = 5  # meters
+PICK_UP_TO_AISLE_DISTANCE = 5  # meters
 FORKLIFT_MOVE_SPEED = 1.2  # meters/second
 FORKLIFT_LIFT_SPEED = 0.5  # meters/second
 PLACEMENT_TIME = 1  # second
@@ -36,6 +36,11 @@ class Shelf:
         self.pallets.append(pallet)
         self.numOfPallets += 1
         print("Pallet of " + pallet.category + " added.")
+
+    def remove_pallet(self, pallet):
+        self.pallets.remove(pallet)
+        self.numOfPallets -= 1
+        print("Pallet of " + pallet.category + " removed.")
 
 
 class Bay:
@@ -60,8 +65,8 @@ def add_pallet(rack, bay_id, pallet):
         '''
 
         rack.bays[bay_id].shelves[0].add_pallet(pallet)
-        placement_time = calculate_placement_time(bay_id, rack.bays[bay_id].shelves[0].shelf_id)
-        return f"Placed pallet of {pallet.category} in rack {rack.rack_id} bay {rack.bays[bay_id].bay_id} bottom shelf.", placement_time
+        placement_time, distance_covered = calculate_placement_time(bay_id, rack.bays[bay_id].shelves[0].shelf_id)
+        return f"Placed pallet of {pallet.category} in rack {rack.rack_id + 1} bay {rack.bays[bay_id].bay_id + 1} bottom shelf.", placement_time, distance_covered
 
     elif pallet.category == 'Category B' and rack.bays[bay_id].shelves[-1].numOfPallets < rack.bays[bay_id].shelves[
         -1].maxNumOfPallets:
@@ -72,24 +77,94 @@ def add_pallet(rack, bay_id, pallet):
         '''
 
         rack.bays[bay_id].shelves[-1].add_pallet(pallet)
-        placement_time = calculate_placement_time(bay_id, rack.bays[bay_id].shelves[-1].shelf_id)
-        return f"Placed pallet of {pallet.category} in rack {rack.rack_id} bay {rack.bays[bay_id].bay_id} top shelf.", placement_time
+        placement_time, distance_covered = calculate_placement_time(bay_id, rack.bays[bay_id].shelves[-1].shelf_id)
+        return f"Placed pallet of {pallet.category} in rack {rack.rack_id + 1} bay {rack.bays[bay_id].bay_id + 1} top shelf.", placement_time, distance_covered
     else:
         for shelf in rack.bays[bay_id].shelves:
             if shelf.numOfPallets < shelf.maxNumOfPallets:
                 shelf.add_pallet(pallet)
-                placement_time = calculate_placement_time(bay_id, shelf.shelf_id)
-                return f"Placed pallet of {pallet.category} in rack {rack.rack_id} bay {bay_id} shelf {shelf.shelf_id}.", placement_time
+                placement_time, distance_covered = calculate_placement_time(bay_id, shelf.shelf_id)
+                return f"Placed pallet of {pallet.category} in rack {rack.rack_id + 1} bay {bay_id + 1} shelf {shelf.shelf_id + 1}.", placement_time, distance_covered
 
     return "No available space in bay."
 
+def retrieve_pallet(racks, category):
+    rack_ids = []
+    bay_ids = []
+    shelf_ids = []
+    pallets = []
+    for rack in racks:
+        rack_id, bay_id, shelf_id, pallet = search_pallet_in_rack(rack, category)
+        rack_ids.append(rack_id)
+        bay_ids.append(bay_id)
+        shelf_ids.append(shelf_id)
+        pallets.append(pallet)
+
+    rack_ids = [i for i in rack_ids if i is not None]
+    bay_ids = [i for i in bay_ids if i is not None]
+    shelf_ids = [i for i in shelf_ids if i is not None]
+    pallets = [i for i in pallets if i is not None]
+
+    if len(bay_ids) > 1: #If there are > 1 candidate pallets
+        retrieval_times = []
+        distances_covered = []
+        for index in range(len(bay_ids)):
+            retrieval_time, distance_covered = calculate_retrieval_time(bay_ids[index], shelf_ids[index])
+            retrieval_times.append(retrieval_time)
+            distances_covered.append(distance_covered)
+        optimal_index = retrieval_times.index(min(retrieval_times))
+        racks[optimal_index].bays[bay_ids[optimal_index]].shelves[shelf_ids[optimal_index]].remove_pallet(pallets[optimal_index])
+        return retrieval_times[optimal_index], distances_covered[optimal_index]
+    elif len(bay_ids) == 1:
+        retrieval_time, distance_covered = calculate_retrieval_time(bay_ids[0], shelf_ids[0])
+        racks[rack_ids[0]].bays[bay_ids[0]].shelves[shelf_ids[0]].remove_pallet(pallets[0])
+        return retrieval_time, distance_covered
+    else:
+        return "Pallet not found."
+
+
+def search_pallet_in_rack(rack, category):
+
+    if category == 'Category A':
+        '''
+        Reverse loop the bay list because of the proximity to the pick-up area.
+        '''
+        for bay in reversed(rack.bays):
+            for pallet in bay.shelves[0].pallets:
+                if pallet.category == category:
+                    print(f"Pallet found in bay {bay.bay_id + 1} bottom shelf")
+                    return rack.rack_id, bay.bay_id, bay.shelves[0].shelf_id, pallet
+
+    if category == 'Category B':
+        for bay in reversed(rack.bays):
+            for pallet in bay.shelves[-1].pallets:
+                if pallet.category == category:
+                    print(f"Pallet found in bay {bay.bay_id + 1} bottom shelf")
+                    return rack.rack_id, bay.bay_id, bay.shelves[-1].shelf_id, pallet
+
+    else:
+        for bay in reversed(rack.bays):
+            for shelf in bay.shelves:
+                for pallet in shelf.pallets:
+                    if pallet.category == category:
+                        print(f"Pallet found in bay {bay.bay_id + 1} shelf {shelf.shelf_id + 1}")
+                        return rack.rack_id, bay.bay_id, shelf.shelf_id, pallet
+
+    return None, None, None, None
 
 def calculate_placement_time(bay_id, shelf_id):
     distance_to_bay = DROP_OFF_TO_AISLE_DISTANCE + bay_id * BAY_WIDTH + BAY_WIDTH / 2
     move_time = distance_to_bay / FORKLIFT_MOVE_SPEED
     lift_time = (shelf_id * SHELF_HEIGHT) / FORKLIFT_LIFT_SPEED
     total_time = move_time + lift_time + PLACEMENT_TIME
-    return total_time
+    return total_time, distance_to_bay
+
+def calculate_retrieval_time(bay_id, shelf_id):
+    distance_to_bay = PICK_UP_TO_AISLE_DISTANCE + bay_id * BAY_WIDTH + BAY_WIDTH / 2
+    move_time = distance_to_bay / FORKLIFT_MOVE_SPEED
+    lift_time = (shelf_id * SHELF_HEIGHT) / FORKLIFT_LIFT_SPEED
+    total_time = move_time + lift_time + RETRIEVAL_TIME
+    return total_time, distance_to_bay
 
 
 racks = [Rack(id=i) for i in range(NUM_OF_RACKS)]
@@ -97,14 +172,20 @@ racks = [Rack(id=i) for i in range(NUM_OF_RACKS)]
 inputs['Date'] = pd.to_datetime(inputs['Date'], format="%d/%m/%Y")
 
 total_placement_time = 0
+total_distance_covered = 0
 
 for date, day_data in inputs.groupby(inputs['Date'].dt.date):
     day_placement_time = 0
+    day_distance_covered = 0
     for index, row in day_data.iterrows():
         rack = int(row['Rack'].split('Rack ')[1])  # Get only the number from 'Rack X'
         bay = int(row['Bay'])
         category = row['Category']
         pallet = Europallet(category=category)
         day_placement_time += add_pallet(racks[rack - 1], bay - 1, pallet)[1]
+        day_distance_covered += add_pallet(racks[rack - 1], bay - 1, pallet)[2]
+    retrieve_pallet(racks, category='Category A')
     total_placement_time += day_placement_time
+    total_distance_covered += day_distance_covered
     print(f"Processed data for {date}")
+    break
