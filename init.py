@@ -1,9 +1,6 @@
-from unicodedata import category
+from audioop import reverse
 
 import pandas as pd
-
-inputs = pd.read_csv('warehouse_log_inputs.csv')
-outputs = pd.read_csv('warehouse_log_outputs.csv')
 
 NUM_OF_RACKS = 2
 BAYS_PER_RACK = 10
@@ -166,13 +163,60 @@ def calculate_retrieval_time(bay_id, shelf_id):
     total_time = move_time + lift_time + RETRIEVAL_TIME
     return total_time, distance_to_bay
 
+def add_preexisting_stock(racks, inputs, outputs):
 
+    diff = inputs['Category'].value_counts()['Category A'] - outputs['Category'].value_counts()['Category A']
+    if diff < 0:
+        pallet_count = 0
+        for rack in racks:
+            for bay in reversed(rack.bays):
+                for index in range(bay.shelves[0].maxNumOfPallets): #Fill the bottom shelves
+                    if pallet_count == abs(diff):
+                        break
+                    else:
+                        pallet = Europallet(category='Category A')
+                        add_pallet(rack, bay.bay_id, pallet)
+                        pallet_count += 1
+
+    diff = inputs['Category'].value_counts()['Category B'] - outputs['Category'].value_counts()['Category B']
+
+    if diff < 0:
+        pallet_count = 0
+        for rack in racks:
+            for bay in reversed(rack.bays):
+                for index in range(bay.shelves[-1].maxNumOfPallets):  # Fill the top shelves
+                    if pallet_count == abs(diff):
+                        break
+                    else:
+                        pallet = Europallet(category='Category B')
+                        add_pallet(rack, bay.bay_id, pallet)
+                        pallet_count += 1
+
+    diff = inputs['Category'].value_counts()['Category C'] - outputs['Category'].value_counts()['Category C']
+
+    if diff < 0:
+        pallet_count = 0
+        for rack in racks:
+            for bay in reversed(rack.bays):
+                for shelf in bay.shelves:
+                    for index in range(shelf.maxNumOfPallets):
+                        if pallet_count == abs(diff):
+                            break
+                        else:
+                            pallet = Europallet(category='Category C')
+                            add_pallet(rack, bay.bay_id, pallet)
+                            pallet_count += 1
+
+inputs = pd.read_csv('warehouse_log_inputs.csv')
+outputs = pd.read_csv('warehouse_log_outputs.csv')
 racks = [Rack(id=i) for i in range(NUM_OF_RACKS)]
 
 inputs['Date'] = pd.to_datetime(inputs['Date'], format="%d/%m/%Y")
 
 total_placement_time = 0
 total_distance_covered = 0
+
+add_preexisting_stock(racks, inputs, outputs)
 
 for date, day_data in inputs.groupby(inputs['Date'].dt.date):
     day_placement_time = 0
