@@ -1,53 +1,5 @@
-import pandas as pd
-
-NUM_OF_RACKS = 2
-BAYS_PER_RACK = 10
-SHELVES_PER_BAY = 4
-PALLETS_PER_SHELF = 3
-SHELF_HEIGHT = 1.8  # meters
-BAY_WIDTH = 3  # meters
-PALLET_WIDTH = 0.8  # meters
-DROP_OFF_TO_AISLE_DISTANCE = 5  # meters
-PICK_UP_TO_AISLE_DISTANCE = 5  # meters
-FORKLIFT_MOVE_SPEED = 1.2  # meters/second
-FORKLIFT_LIFT_SPEED = 0.5  # meters/second
-PLACEMENT_TIME = 1  # second
-RETRIEVAL_TIME = 1  # second
-
-
-class Europallet:
-    def __init__(self, category):
-        self.category = category
-
-
-class Shelf:
-    def __init__(self, id):
-        self.shelf_id = id
-        self.numOfPallets = 0
-        self.maxNumOfPallets = PALLETS_PER_SHELF
-        self.pallets = []
-
-    def add_pallet(self, pallet):
-        self.pallets.append(pallet)
-        self.numOfPallets += 1
-        print("Pallet of " + pallet.category + " added.")
-
-    def remove_pallet(self, pallet):
-        self.pallets.remove(pallet)
-        self.numOfPallets -= 1
-        print("Pallet of " + pallet.category + " removed.")
-
-
-class Bay:
-    def __init__(self, id):
-        self.bay_id = id
-        self.shelves = [Shelf(id=i) for i in range(SHELVES_PER_BAY)]
-
-
-class Rack:
-    def __init__(self, id):
-        self.rack_id = id
-        self.bays = [Bay(id=i) for i in range(BAYS_PER_RACK)]
+from entities import *
+from constants import *
 
 
 def add_pallet(rack, bay_id, pallet):
@@ -169,7 +121,6 @@ def calculate_retrieval_time(bay_id, shelf_id):
 
 
 def add_preexisting_stock(racks, pallets_to_add):
-
     for rack in racks:
         pallet_count = 0
         for bay in reversed(rack.bays):
@@ -201,51 +152,37 @@ def add_preexisting_stock(racks, pallets_to_add):
                 pallet_count += 1
 
 
-inputs = pd.read_csv('warehouse_log_inputs.csv')
-outputs = pd.read_csv('warehouse_log_outputs.csv')
-racks = [Rack(id=i) for i in range(NUM_OF_RACKS)]
+def simulate(racks, inputs, outputs):
+    total_placement_time = 0
+    total_retrieval_time = 0
+    total_placement_distance_covered = 0
+    total_retrieval_distance_covered = 0
+    for date, inputs_day_data in inputs.groupby(inputs['Date'].dt.date):
+        day_placement_time = 0
+        day_retrieval_time = 0
+        day_distance_covered_placement = 0
+        day_distance_covered_retrieval = 0
+        outputs_day_data = outputs[outputs['Date'] == inputs_day_data['Date'].iloc[0]]
 
-inputs['Date'] = pd.to_datetime(inputs['Date'], format="%d/%m/%Y")
-outputs['Date'] = pd.to_datetime(outputs['Date'], format="%d/%m/%Y")
+        for index, row in inputs_day_data.iterrows():
+            rack = int(row['Rack'].split('Rack ')[1])  # Get only the number from 'Rack X'
+            bay = int(row['Bay'])
+            category = row['Category']
+            pallet = Europallet(category=category)
+            _, placement_time, distance_covered = add_pallet(racks[rack - 1], bay - 1, pallet)
+            day_placement_time += placement_time
+            day_distance_covered_placement += distance_covered
 
-total_placement_time = 0
-total_retrieval_time = 0
-total_placement_distance_covered = 0
-total_retrieval_distance_covered = 0
+        for index, row in outputs_day_data.iterrows():
+            category = row['Category']
+            _, retrieval_time, distance_covered = retrieve_pallet(racks, category)
 
-add_preexisting_stock(racks, pallets_to_add=9)
+            day_retrieval_time += retrieval_time
+            day_distance_covered_retrieval += distance_covered
 
-for date, inputs_day_data in inputs.groupby(inputs['Date'].dt.date):
-    day_placement_time = 0
-    day_retrieval_time = 0
-    day_distance_covered_placement = 0
-    day_distance_covered_retrieval = 0
-    outputs_day_data = outputs[outputs['Date'] == inputs_day_data['Date'].iloc[0]]
-
-    for index, row in inputs_day_data.iterrows():
-        rack = int(row['Rack'].split('Rack ')[1])  # Get only the number from 'Rack X'
-        bay = int(row['Bay'])
-        category = row['Category']
-        pallet = Europallet(category=category)
-        _, placement_time, distance_covered = add_pallet(racks[rack - 1], bay - 1, pallet)
-        day_placement_time += placement_time
-        day_distance_covered_placement += distance_covered
-
-    for index, row in outputs_day_data.iterrows():
-        category = row['Category']
-        _, retrieval_time, distance_covered = retrieve_pallet(racks, category)
-
-        day_retrieval_time += retrieval_time
-        day_distance_covered_retrieval += distance_covered
-
-    total_placement_time += day_placement_time
-    total_retrieval_time += day_retrieval_time
-    total_placement_distance_covered += day_distance_covered_placement
-    total_retrieval_distance_covered += day_distance_covered_retrieval
-    print(f"Processed data for {date}")
-
-print(f"Total placement time: {total_placement_time / 60} minutes")
-print(f"Total retrieval time: {total_retrieval_time / 60} minutes")
-print(f"Total placement distance covered: {total_placement_distance_covered} meters")
-print(f"Total retrieval distance covered: {total_retrieval_distance_covered} meters")
-print(f"Total distance covered: {total_placement_distance_covered + total_retrieval_distance_covered} meters")
+        total_placement_time += day_placement_time
+        total_retrieval_time += day_retrieval_time
+        total_placement_distance_covered += day_distance_covered_placement
+        total_retrieval_distance_covered += day_distance_covered_retrieval
+        print(f"Processed data for {date}")
+    return total_placement_time, total_retrieval_time, total_placement_distance_covered, total_retrieval_distance_covered

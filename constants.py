@@ -1,0 +1,13 @@
+NUM_OF_RACKS = 2
+BAYS_PER_RACK = 10
+SHELVES_PER_BAY = 4
+PALLETS_PER_SHELF = 3
+SHELF_HEIGHT = 1.8  # meters
+BAY_WIDTH = 3  # meters
+PALLET_WIDTH = 0.8  # meters
+DROP_OFF_TO_AISLE_DISTANCE = 5  # meters
+PICK_UP_TO_AISLE_DISTANCE = 5  # meters
+FORKLIFT_MOVE_SPEED = 1.2  # meters/second
+FORKLIFT_LIFT_SPEED = 0.5  # meters/second
+PLACEMENT_TIME = 1  # second
+RETRIEVAL_TIME = 1  # second
