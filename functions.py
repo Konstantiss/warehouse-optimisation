@@ -114,47 +114,61 @@ def calculate_placement_time(bay_id, shelf_id):
 
 
 def calculate_retrieval_time(bay_id, shelf_id):
-    distance_to_bay = PICK_UP_TO_AISLE_DISTANCE + bay_id * BAY_WIDTH + BAY_WIDTH / 2
+    distance_to_bay = PICK_UP_TO_AISLE_DISTANCE + (BAYS_PER_RACK - bay_id - 1) * BAY_WIDTH + BAY_WIDTH / 2
     move_time = distance_to_bay / FORKLIFT_MOVE_SPEED
     lift_time = (shelf_id * SHELF_HEIGHT) / FORKLIFT_LIFT_SPEED
     total_time = move_time + lift_time + RETRIEVAL_TIME
     return total_time, distance_to_bay
 
 
-def add_preexisting_stock(racks, pallets_to_add):
+def add_preexisting_stock(racks, inputs, outputs):
+    diff = 0
+    if 'Category A' in inputs['Category'].values and 'Category A' in outputs['Category'].values:
+        diff = inputs['Category'].value_counts()['Category A'] - outputs['Category'].value_counts()['Category A']
+    if diff < 0:
+        pallet_count = 0
+        for rack in racks:
+            for bay in reversed(rack.bays):
+                for index in range(bay.shelves[0].maxNumOfPallets):  # Fill the bottom shelves
+                    if pallet_count == abs(diff):
+                        break
+                    else:
+                        pallet = Europallet(category='Category A')
+                        add_pallet(rack, bay.bay_id, pallet)
+                        pallet_count += 1
 
-    pallet_count = 0
-    for rack in racks:
-        for bay in reversed(rack.bays):
-            if pallet_count == pallets_to_add:
-                break
-            else:
-                pallet = Europallet(category='Category A')
-                msg, _, __ = add_pallet(rack, bay.bay_id, pallet)
-                print(msg)
-                pallet_count += 1
+    diff = 0
+    if 'Category B' in inputs['Category'].values and 'Category B' in outputs['Category'].values:
+        diff = inputs['Category'].value_counts()['Category B'] - outputs['Category'].value_counts()['Category B']
 
-    pallet_count = 0
-    for rack in racks:
-        for bay in reversed(rack.bays):
-            if pallet_count == pallets_to_add:
-                break
-            else:
-                pallet = Europallet(category='Category B')
-                msg, _, __ = add_pallet(rack, bay.bay_id, pallet)
-                print(msg)
-                pallet_count += 1
+    if diff < 0:
+        pallet_count = 0
+        for rack in racks:
+            for bay in reversed(rack.bays):
+                for index in range(bay.shelves[-1].maxNumOfPallets):  # Fill the top shelves
+                    if pallet_count == abs(diff):
+                        break
+                    else:
+                        pallet = Europallet(category='Category B')
+                        add_pallet(rack, bay.bay_id, pallet)
+                        pallet_count += 1
 
-    pallet_count = 0
-    for rack in racks:
-        for bay in reversed(rack.bays):
-            if pallet_count == pallets_to_add:
-                break
-            else:
-                pallet = Europallet(category='Category C')
-                msg, _, __ = add_pallet(rack, bay.bay_id, pallet)
-                print(msg)
-                pallet_count += 1
+    diff = 0
+    if 'Category C' in inputs['Category'].values and 'Category C' in outputs['Category'].values:
+        diff = inputs['Category'].value_counts()['Category C'] - outputs['Category'].value_counts()['Category C']
+
+    if diff < 0:
+        pallet_count = 0
+        for rack in racks:
+            for bay in reversed(rack.bays):
+                for shelf in bay.shelves:
+                    for index in range(shelf.maxNumOfPallets):
+                        if pallet_count == abs(diff):
+                            break
+                        else:
+                            pallet = Europallet(category='Category C')
+                            add_pallet(rack, bay.bay_id, pallet)
+                            pallet_count += 1
 
 
 def optimize_placement(racks, inputs_day_data):
@@ -191,6 +205,7 @@ def simulate_with_optimized_placement(racks, inputs, outputs):
         day_retrieval_time = 0
         day_distance_covered_retrieval = 0
         outputs_day_data = outputs[outputs['Date'] == inputs_day_data['Date'].iloc[0]]
+        add_preexisting_stock(racks, inputs_day_data, outputs_day_data)
 
         day_placement_time, day_distance_covered_placement = optimize_placement(racks, inputs_day_data)
 
@@ -223,13 +238,19 @@ def simulate_with_initial_placement(racks, inputs, outputs):
         day_distance_covered_placement = 0
         day_distance_covered_retrieval = 0
         outputs_day_data = outputs[outputs['Date'] == inputs_day_data['Date'].iloc[0]]
-
+        add_preexisting_stock(racks, inputs_day_data, outputs_day_data)
         for index, row in inputs_day_data.iterrows():
             rack = int(row['Rack'].split('Rack ')[1])  # Get only the number from 'Rack X'
             bay = int(row['Bay'])
             category = row['Category']
             pallet = Europallet(category=category)
             _, placement_time, distance_covered = add_pallet(racks[rack - 1], bay - 1, pallet)
+            while placement_time == 0:
+                if bay < BAYS_PER_RACK:
+                    bay += 1
+                elif bay == BAYS_PER_RACK:
+                    bay = 1
+                _, placement_time, distance_covered = add_pallet(racks[rack - 1], bay - 1, pallet)
             print(_)
             day_placement_time += placement_time
             day_distance_covered_placement += distance_covered
@@ -237,7 +258,7 @@ def simulate_with_initial_placement(racks, inputs, outputs):
         for index, row in outputs_day_data.iterrows():
             category = row['Category']
             _, retrieval_time, distance_covered = retrieve_pallet(racks, category)
-
+            print(_)
             day_retrieval_time += retrieval_time
             day_distance_covered_retrieval += distance_covered
 
