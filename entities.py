@@ -15,12 +15,10 @@ class Shelf:
     def add_pallet(self, pallet):
         self.pallets.append(pallet)
         self.numOfPallets += 1
-        print("Pallet of " + pallet.category + " added.")
 
     def remove_pallet(self, pallet):
         self.pallets.remove(pallet)
         self.numOfPallets -= 1
-        print("Pallet of " + pallet.category + " removed.")
 
 
 class Bay:
