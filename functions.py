@@ -32,7 +32,7 @@ def add_pallet(rack, bay_id, pallet):
                 shelf.add_pallet(pallet)
                 placement_time, distance_covered = calculate_placement_time(bay_id, shelf.shelf_id)
                 return f"Placed pallet of {pallet.category} in rack {rack.rack_id + 1} bay {bay_id + 1} shelf {shelf.shelf_id + 1}.", placement_time, distance_covered
-
+        return "No available space in bay.", 0, 0
     else:
         return "No available space in bay.", 0, 0
 
@@ -212,7 +212,7 @@ def simulate_with_optimized_placement(racks, inputs, outputs):
         for index, row in outputs_day_data.iterrows():
             category = row['Category']
             _, retrieval_time, distance_covered = retrieve_pallet(racks, category)
-
+            print(_)
             day_retrieval_time += retrieval_time
             day_distance_covered_retrieval += distance_covered
 
