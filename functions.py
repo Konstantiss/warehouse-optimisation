@@ -1,8 +1,9 @@
 from entities import *
 from constants import *
+import pandas as pd
 
 
-def add_pallet(rack, bay_id, pallet):
+def add_pallet(rack, bay_id, pallet, shelf_id=None):
     if pallet.category == 'Category A' and len(rack.bays[bay_id].shelves[0].pallets) < rack.bays[bay_id].shelves[
         0].maxNumOfPallets:
 
@@ -27,12 +28,20 @@ def add_pallet(rack, bay_id, pallet):
         placement_time, distance_covered = calculate_placement_time(bay_id, rack.bays[bay_id].shelves[-1].shelf_id)
         return f"Placed pallet of {pallet.category} in rack {rack.rack_id + 1} bay {rack.bays[bay_id].bay_id + 1} top shelf.", placement_time, distance_covered
     elif pallet.category == 'Category C':
-        for shelf in rack.bays[bay_id].shelves:
-            if shelf.numOfPallets < shelf.maxNumOfPallets:
-                shelf.add_pallet(pallet)
-                placement_time, distance_covered = calculate_placement_time(bay_id, shelf.shelf_id)
-                return f"Placed pallet of {pallet.category} in rack {rack.rack_id + 1} bay {bay_id + 1} shelf {shelf.shelf_id + 1}.", placement_time, distance_covered
-        return "No available space in bay.", 0, 0
+        if shelf_id is not None:
+            if rack.bays[bay_id].shelves[shelf_id].numOfPallets < rack.bays[bay_id].shelves[shelf_id].maxNumOfPallets:
+                rack.bays[bay_id].shelves[shelf_id].add_pallet(pallet)
+                placement_time, distance_covered = calculate_placement_time(bay_id, shelf_id)
+                return f"Placed pallet of {pallet.category} in rack {rack.rack_id + 1} bay {bay_id + 1} shelf {shelf_id + 1}.", placement_time, distance_covered
+            else:
+                return "No available space in bay.", 0, 0
+        else:
+            for shelf in rack.bays[bay_id].shelves:
+                if shelf.numOfPallets < shelf.maxNumOfPallets:
+                    shelf.add_pallet(pallet)
+                    placement_time, distance_covered = calculate_placement_time(bay_id, shelf.shelf_id)
+                    return f"Placed pallet of {pallet.category} in rack {rack.rack_id + 1} bay {bay_id + 1} shelf {shelf.shelf_id + 1}.", placement_time, distance_covered
+            return "No available space in bay.", 0, 0
     else:
         return "No available space in bay.", 0, 0
 
@@ -110,6 +119,8 @@ def calculate_placement_time(bay_id, shelf_id):
     move_time = distance_to_bay / FORKLIFT_MOVE_SPEED
     lift_time = (shelf_id * SHELF_HEIGHT) / FORKLIFT_LIFT_SPEED
     total_time = move_time + lift_time + PLACEMENT_TIME
+    print(f"Move time: {move_time}, Lift time: {lift_time}, Total time: {total_time}")
+    print(f"Distance covered: {distance_to_bay}")
     return total_time, distance_to_bay
 
 
@@ -118,6 +129,8 @@ def calculate_retrieval_time(bay_id, shelf_id):
     move_time = distance_to_bay / FORKLIFT_MOVE_SPEED
     lift_time = (shelf_id * SHELF_HEIGHT) / FORKLIFT_LIFT_SPEED
     total_time = move_time + lift_time + RETRIEVAL_TIME
+    print(f"Move time: {move_time}, Lift time: {lift_time}, Total time: {total_time}")
+    print(f"Distance covered: {distance_to_bay}")
     return total_time, distance_to_bay
 
 
@@ -161,7 +174,7 @@ def add_preexisting_stock(racks, inputs, outputs):
         pallet_count = 0
         for rack in racks:
             for bay in reversed(rack.bays):
-                for shelf in bay.shelves:
+                for shelf in [bay.shelves[1], bay.shelves[2]]:  # Category C items in middle shelves.
                     for index in range(shelf.maxNumOfPallets):
                         if pallet_count == abs(diff):
                             break
@@ -173,31 +186,88 @@ def add_preexisting_stock(racks, inputs, outputs):
 
 def optimize_placement(racks, inputs_day_data):
     day_placement_time = 0
+    day_placement_time_a = 0
+    day_placement_time_b = 0
+    day_placement_time_c = 0
     day_distance_covered_placement = 0
+    day_distance_covered_placement_a = 0
+    day_distance_covered_placement_b = 0
+    day_distance_covered_placement_c = 0
+    # order = ["Category B", "Category C", "Category A"]
+    # inputs_day_data['Category'] = pd.Categorical(inputs_day_data['Category'], categories=order, ordered=True)
+    # inputs_day_data = inputs_day_data.sort_values(by='Category')
 
     for index, row in inputs_day_data.iterrows():
         category = row['Category']
         placement_time = 0
         distance_covered = 0
-        for bay_id in range(BAYS_PER_RACK - 1, 0, -1):
-            if placement_time != 0 and distance_covered != 0:
-                break
-            for rack in racks:
-                pallet = Europallet(category)
-                _, placement_time, distance_covered = add_pallet(rack, bay_id, pallet)
+        if category == 'Category A':
+            for bay_id in range(BAYS_PER_RACK - 1, 0, -1):
                 if placement_time != 0 and distance_covered != 0:
-                    print(_)
-                    day_placement_time += placement_time
-                    day_distance_covered_placement += distance_covered
                     break
-    return day_placement_time, day_distance_covered_placement
+                for rack in racks:
+                    pallet = Europallet(category)
+                    _, placement_time, distance_covered = add_pallet(rack, bay_id, pallet)
+                    if placement_time != 0 and distance_covered != 0:
+                        print(_)
+                        day_placement_time += placement_time
+                        day_placement_time_a += placement_time
+                        day_distance_covered_placement += distance_covered
+                        day_distance_covered_placement_a += distance_covered
+                        break
+
+        elif category == 'Category B':
+            for bay_id in range(2, BAYS_PER_RACK - 1):
+                if placement_time != 0 and distance_covered != 0:
+                    break
+                for rack in racks:
+                    pallet = Europallet(category)
+                    _, placement_time, distance_covered = add_pallet(rack, bay_id, pallet)
+                    if placement_time != 0 and distance_covered != 0:
+                        print(_)
+                        day_placement_time += placement_time
+                        day_placement_time_b += placement_time
+                        day_distance_covered_placement += distance_covered
+                        day_distance_covered_placement_b += distance_covered
+                        break
+
+        elif category == 'Category C':
+            for bay_id in range(BAYS_PER_RACK - 1, 0, -1):
+                if placement_time != 0 and distance_covered != 0:
+                    break
+                for rack in racks:
+                    pallet = Europallet(category)
+                    _, placement_time, distance_covered = add_pallet(rack, bay_id, pallet)
+                    if placement_time != 0 and distance_covered != 0:
+                        print(_)
+                        day_placement_time += placement_time
+                        day_placement_time_c += placement_time
+                        day_distance_covered_placement += distance_covered
+                        day_distance_covered_placement_c += distance_covered
+                        break
+
+    return (day_placement_time, day_placement_time_a, day_placement_time_b, day_placement_time_c,
+            day_distance_covered_placement,
+            day_distance_covered_placement_a, day_distance_covered_placement_b, day_distance_covered_placement_c)
 
 
 def simulate_with_optimized_placement(racks, inputs, outputs):
     total_placement_time = 0
+    total_placement_time_a = 0
+    total_placement_time_b = 0
+    total_placement_time_c = 0
     total_retrieval_time = 0
+    total_retrieval_time_a = 0
+    total_retrieval_time_b = 0
+    total_retrieval_time_c = 0
     total_placement_distance_covered = 0
+    total_placement_distance_covered_a = 0
+    total_placement_distance_covered_b = 0
+    total_placement_distance_covered_c = 0
     total_retrieval_distance_covered = 0
+    total_retrieval_distance_covered_a = 0
+    total_retrieval_distance_covered_b = 0
+    total_retrieval_distance_covered_c = 0
 
     print("\n\n Simulating with optimized placement: \n\n")
 
@@ -207,28 +277,61 @@ def simulate_with_optimized_placement(racks, inputs, outputs):
         outputs_day_data = outputs[outputs['Date'] == inputs_day_data['Date'].iloc[0]]
         add_preexisting_stock(racks, inputs_day_data, outputs_day_data)
 
-        day_placement_time, day_distance_covered_placement = optimize_placement(racks, inputs_day_data)
+        day_placement_time, day_placement_time_a, day_placement_time_b, day_placement_time_c, day_distance_covered_placement, day_distance_covered_placement_a, day_distance_covered_placement_b, day_distance_covered_placement_c = optimize_placement(
+            racks, inputs_day_data)
 
         for index, row in outputs_day_data.iterrows():
             category = row['Category']
             _, retrieval_time, distance_covered = retrieve_pallet(racks, category)
             print(_)
+            if category == 'Category A':
+                total_retrieval_time_a += retrieval_time
+                total_retrieval_distance_covered_a += distance_covered
+            elif category == 'Category B':
+                total_retrieval_time_b += retrieval_time
+                total_retrieval_distance_covered_b += distance_covered
+            elif category == 'Category C':
+                total_retrieval_time_c += retrieval_time
+                total_retrieval_distance_covered_c += distance_covered
+
             day_retrieval_time += retrieval_time
             day_distance_covered_retrieval += distance_covered
 
         total_placement_time += day_placement_time
+        total_placement_time_a += day_placement_time_a
+        total_placement_time_b += day_placement_time_b
+        total_placement_time_c += day_placement_time_c
         total_retrieval_time += day_retrieval_time
         total_placement_distance_covered += day_distance_covered_placement
+        total_placement_distance_covered_a += day_distance_covered_placement_a
+        total_placement_distance_covered_b += day_distance_covered_placement_b
+        total_placement_distance_covered_c += day_distance_covered_placement_c
         total_retrieval_distance_covered += day_distance_covered_retrieval
         print(f"Processed data for {date}")
-    return total_placement_time, total_retrieval_time, total_placement_distance_covered, total_retrieval_distance_covered
+    return (total_placement_time, total_placement_time_a, total_placement_time_b, total_placement_time_c, total_retrieval_time,
+            total_retrieval_time_a, total_retrieval_time_b, total_retrieval_time_c, total_placement_distance_covered,
+            total_placement_distance_covered_a, total_placement_distance_covered_b, total_placement_distance_covered_c,
+            total_retrieval_distance_covered, total_retrieval_distance_covered_a, total_retrieval_distance_covered_b,
+            total_retrieval_distance_covered_c)
 
 
 def simulate_with_initial_placement(racks, inputs, outputs):
     total_placement_time = 0
+    total_placement_time_a = 0
+    total_placement_time_b = 0
+    total_placement_time_c = 0
     total_retrieval_time = 0
+    total_retrieval_time_a = 0
+    total_retrieval_time_b = 0
+    total_retrieval_time_c = 0
     total_placement_distance_covered = 0
+    total_placement_distance_covered_a = 0
+    total_placement_distance_covered_b = 0
+    total_placement_distance_covered_c = 0
     total_retrieval_distance_covered = 0
+    total_retrieval_distance_covered_a = 0
+    total_retrieval_distance_covered_b = 0
+    total_retrieval_distance_covered_c = 0
 
     print("\n\n Simulating with initial placement: \n\n")
 
@@ -244,13 +347,32 @@ def simulate_with_initial_placement(racks, inputs, outputs):
             bay = int(row['Bay'])
             category = row['Category']
             pallet = Europallet(category=category)
-            _, placement_time, distance_covered = add_pallet(racks[rack - 1], bay - 1, pallet)
-            while placement_time == 0:
-                if bay < BAYS_PER_RACK:
-                    bay += 1
-                elif bay == BAYS_PER_RACK:
-                    bay = 1
+            if category == 'Category C':
+                shelf = row['Shelf']
+                _, placement_time, distance_covered = add_pallet(racks[rack - 1], bay - 1, pallet, shelf - 1)
+                while placement_time == 0:
+                    if bay < BAYS_PER_RACK:
+                        bay += 1
+                    elif bay == BAYS_PER_RACK:
+                        bay = 1
+                    _, placement_time, distance_covered = add_pallet(racks[rack - 1], bay - 1, pallet)
+                total_placement_time_c += placement_time
+                total_placement_distance_covered_c += distance_covered
+            else:
                 _, placement_time, distance_covered = add_pallet(racks[rack - 1], bay - 1, pallet)
+                while placement_time == 0:
+                    if bay < BAYS_PER_RACK:
+                        bay += 1
+                    elif bay == BAYS_PER_RACK:
+                        bay = 1
+                    _, placement_time, distance_covered = add_pallet(racks[rack - 1], bay - 1, pallet)
+                if category == 'Category A':
+                    total_placement_time_a += placement_time
+                    total_placement_distance_covered_a += distance_covered
+                elif category == 'Category B':
+                    total_placement_time_b += placement_time
+                    total_placement_distance_covered_b += distance_covered
+
             print(_)
             day_placement_time += placement_time
             day_distance_covered_placement += distance_covered
@@ -259,6 +381,16 @@ def simulate_with_initial_placement(racks, inputs, outputs):
             category = row['Category']
             _, retrieval_time, distance_covered = retrieve_pallet(racks, category)
             print(_)
+            if category == 'Category A':
+                total_retrieval_time_a += retrieval_time
+                total_retrieval_distance_covered_a += distance_covered
+            elif category == 'Category B':
+                total_retrieval_time_b += retrieval_time
+                total_retrieval_distance_covered_b += distance_covered
+            elif category == 'Category C':
+                total_retrieval_time_c += retrieval_time
+                total_retrieval_distance_covered_c += distance_covered
+
             day_retrieval_time += retrieval_time
             day_distance_covered_retrieval += distance_covered
 
@@ -267,4 +399,9 @@ def simulate_with_initial_placement(racks, inputs, outputs):
         total_placement_distance_covered += day_distance_covered_placement
         total_retrieval_distance_covered += day_distance_covered_retrieval
         print(f"Processed data for {date}")
-    return total_placement_time, total_retrieval_time, total_placement_distance_covered, total_retrieval_distance_covered
+    return (
+    total_placement_time, total_placement_time_a, total_placement_time_b, total_placement_time_c, total_retrieval_time,
+    total_retrieval_time_a, total_retrieval_time_b, total_retrieval_time_c, total_placement_distance_covered,
+    total_placement_distance_covered_a, total_placement_distance_covered_b, total_placement_distance_covered_c,
+    total_retrieval_distance_covered, total_retrieval_distance_covered_a, total_retrieval_distance_covered_b,
+    total_retrieval_distance_covered_c)
