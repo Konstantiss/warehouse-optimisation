@@ -1,3 +1,5 @@
+from numpy.ma.core import floor
+
 from entities import *
 from constants import *
 import pandas as pd
@@ -193,16 +195,13 @@ def optimize_placement(racks, inputs_day_data):
     day_distance_covered_placement_a = 0
     day_distance_covered_placement_b = 0
     day_distance_covered_placement_c = 0
-    # order = ["Category B", "Category C", "Category A"]
-    # inputs_day_data['Category'] = pd.Categorical(inputs_day_data['Category'], categories=order, ordered=True)
-    # inputs_day_data = inputs_day_data.sort_values(by='Category')
 
     for index, row in inputs_day_data.iterrows():
         category = row['Category']
         placement_time = 0
         distance_covered = 0
         if category == 'Category A':
-            for bay_id in range(BAYS_PER_RACK - 1, 0, -1):
+            for bay_id in range(int((BAYS_PER_RACK - 1) / 2) + 1, int((BAYS_PER_RACK - 1) / 2), -1): # Bay 6 to bay 5
                 if placement_time != 0 and distance_covered != 0:
                     break
                 for rack in racks:
@@ -217,7 +216,7 @@ def optimize_placement(racks, inputs_day_data):
                         break
 
         elif category == 'Category B':
-            for bay_id in range(3, 4):
+            for bay_id in range(int((BAYS_PER_RACK - 1) / 2) - 1, int((BAYS_PER_RACK - 1) / 2)): # Bay 4 to bay 5
                 if placement_time != 0 and distance_covered != 0:
                     break
                 for rack in racks:
@@ -232,7 +231,7 @@ def optimize_placement(racks, inputs_day_data):
                         break
 
         elif category == 'Category C':
-            for bay_id in range(BAYS_PER_RACK - 6, 0, -1):
+            for bay_id in range(int((BAYS_PER_RACK - 1) / 2), int((BAYS_PER_RACK - 1) / 2) - 1, -1): #Bay 5 to bay 4
                 if placement_time != 0 and distance_covered != 0:
                     break
                 for rack in racks:
