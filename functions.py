@@ -217,7 +217,7 @@ def optimize_placement(racks, inputs_day_data):
                         break
 
         elif category == 'Category B':
-            for bay_id in range(2, BAYS_PER_RACK - 1):
+            for bay_id in range(3, 4):
                 if placement_time != 0 and distance_covered != 0:
                     break
                 for rack in racks:
@@ -232,7 +232,7 @@ def optimize_placement(racks, inputs_day_data):
                         break
 
         elif category == 'Category C':
-            for bay_id in range(BAYS_PER_RACK - 1, 0, -1):
+            for bay_id in range(BAYS_PER_RACK - 6, 0, -1):
                 if placement_time != 0 and distance_covered != 0:
                     break
                 for rack in racks:
