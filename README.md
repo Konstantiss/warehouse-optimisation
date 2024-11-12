@@ -1,3 +1,9 @@
+# Set-up instructions
+
+- Clone this repository.
+- Run `pip install -r requirements.txt`.
+- Run `main.py` in order to run the simulation with the initial placement and with the optimized placement strategy.
+
 # Problem Definition
 
 **Objective**: Develop a Python script that optimizes the positioning of goods in a warehouse based on category-specific placement rules and historical activity logs, aiming to minimize operational time.
