@@ -18,11 +18,11 @@ How distance to bay is calculated:
 
 For placement:
 
-$$d_1 + bay \_ id \times b_{rack} + b_{rack} \div 2$$
+$$d_1 + bay \\_ id \times b_{rack} + b_{rack} \div 2$$
 
 For retrieval:
 
-$$d_2 + (bays \_ per \_ rack -  bay \_ id) \times b_{rack} + b_{rack} \div 2$$
+$$d_2 + (bays \\_ per \\_ rack -  bay \\_ id) \times b_{rack} + b_{rack} \div 2$$
 
 Where $b_{rack} \div 2$ is the distance needed for the forklift to get centered to the bay.
 
