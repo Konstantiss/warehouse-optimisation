@@ -43,7 +43,7 @@ My solution includes a heuristic solution, meaning that it's tailored to this sp
 
 ### Category A:
 
-Since the outputs are more than the inputs, we want to prioritize retrieval times over placement times, thus the aim is to place them closest to the pick-u area.
+Since the outputs are more than the inputs, we want to prioritize retrieval times over placement times, thus the aim is to place them closest to the pick-up area.
 
 We aim for bays 6, 5 in order to be close to the pick-up area, without compromising placement times too much.
 
@@ -134,9 +134,9 @@ The distance might have increased, but the time has been decreased due to reduce
 
 ## Overall gains
 
-Total placement time with **initial placement**: 118.4 minutes
+Total placement time with initial placement: 118.4 minutes
 
-Total **retrieval time** with **initial placement**: 80.4 minutes
+Total retrieval time with initial placement: 80.4 minutes
 
 Total placement distance covered with initial placement: 6474.0 meters
 
