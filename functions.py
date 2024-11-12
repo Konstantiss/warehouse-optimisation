@@ -1,9 +1,6 @@
-from numpy.ma.core import floor
-
 from entities import *
 from constants import *
 import pandas as pd
-
 
 def add_pallet(rack, bay_id, pallet, shelf_id=None):
     if pallet.category == 'Category A' and len(rack.bays[bay_id].shelves[0].pallets) < rack.bays[bay_id].shelves[
