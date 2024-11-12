@@ -1,9 +1,10 @@
 from entities import *
 from constants import *
 import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
 
-
-def add_pallet(rack, bay_id, pallet, shelf_id=None):
+def add_pallet(rack, bay_id, pallet, access_count, shelf_id=None, log_access=False):
     if pallet.category == 'Category A' and len(rack.bays[bay_id].shelves[0].pallets) < rack.bays[bay_id].shelves[
         0].maxNumOfPallets:
 
@@ -14,7 +15,10 @@ def add_pallet(rack, bay_id, pallet, shelf_id=None):
 
         rack.bays[bay_id].shelves[0].add_pallet(pallet)
         placement_time, distance_covered = calculate_placement_time(bay_id, rack.bays[bay_id].shelves[0].shelf_id)
-        return f"Placed pallet of {pallet.category} in rack {rack.rack_id + 1} bay {rack.bays[bay_id].bay_id + 1} bottom shelf.", placement_time, distance_covered
+        if log_access:
+            access_count.loc[(access_count['Rack'] == rack.rack_id + 1) & (access_count['Bay'] == bay_id + 1), 'Access_Count'] += 1
+
+        return f"Placed pallet of {pallet.category} in rack {rack.rack_id + 1} bay {bay_id + 1} bottom shelf.", placement_time, distance_covered
 
     elif pallet.category == 'Category B' and rack.bays[bay_id].shelves[-1].numOfPallets < rack.bays[bay_id].shelves[
         -1].maxNumOfPallets:
@@ -26,12 +30,19 @@ def add_pallet(rack, bay_id, pallet, shelf_id=None):
 
         rack.bays[bay_id].shelves[-1].add_pallet(pallet)
         placement_time, distance_covered = calculate_placement_time(bay_id, rack.bays[bay_id].shelves[-1].shelf_id)
-        return f"Placed pallet of {pallet.category} in rack {rack.rack_id + 1} bay {rack.bays[bay_id].bay_id + 1} top shelf.", placement_time, distance_covered
+        if log_access:
+            access_count.loc[(access_count['Rack'] == rack.rack_id + 1) & (
+                    access_count['Bay'] == bay_id + 1), 'Access_Count'] += 1
+
+        return f"Placed pallet of {pallet.category} in rack {rack.rack_id + 1} bay {bay_id + 1} top shelf.", placement_time, distance_covered
     elif pallet.category == 'Category C':
         if shelf_id is not None:
             if rack.bays[bay_id].shelves[shelf_id].numOfPallets < rack.bays[bay_id].shelves[shelf_id].maxNumOfPallets:
                 rack.bays[bay_id].shelves[shelf_id].add_pallet(pallet)
                 placement_time, distance_covered = calculate_placement_time(bay_id, shelf_id)
+                if log_access:
+                    access_count.loc[(access_count['Rack'] == rack.rack_id + 1) & (access_count['Bay'] == bay_id + 1), 'Access_Count'] += 1
+
                 return f"Placed pallet of {pallet.category} in rack {rack.rack_id + 1} bay {bay_id + 1} shelf {shelf_id + 1}.", placement_time, distance_covered
             else:
                 return "No available space in bay.", 0, 0
@@ -40,13 +51,16 @@ def add_pallet(rack, bay_id, pallet, shelf_id=None):
                 if shelf.numOfPallets < shelf.maxNumOfPallets:
                     shelf.add_pallet(pallet)
                     placement_time, distance_covered = calculate_placement_time(bay_id, shelf.shelf_id)
+                    if log_access:
+                        access_count.loc[(access_count['Rack'] == rack.rack_id + 1) & (access_count['Bay'] == bay_id + 1), 'Access_Count'] += 1
+
                     return f"Placed pallet of {pallet.category} in rack {rack.rack_id + 1} bay {bay_id + 1} shelf {shelf.shelf_id + 1}.", placement_time, distance_covered
             return "No available space in bay.", 0, 0
     else:
         return "No available space in bay.", 0, 0
 
 
-def retrieve_pallet(racks, category):
+def retrieve_pallet(racks, category, access_count):
     rack_ids = []
     bay_ids = []
     shelf_ids = []
@@ -73,6 +87,8 @@ def retrieve_pallet(racks, category):
         optimal_index = retrieval_times.index(min(retrieval_times))
         racks[optimal_index].bays[bay_ids[optimal_index]].shelves[shelf_ids[optimal_index]].remove_pallet(
             pallets[optimal_index])
+        access_count.loc[(access_count['Rack'] == racks[optimal_index].rack_id + 1) & (
+                    access_count['Bay'] == bay_ids[optimal_index] + 1), 'Access_Count'] += 1
         return (
             f"Retrieved pallet of {pallets[optimal_index].category} from rack {racks[optimal_index].rack_id + 1} bay "
             f"{bay_ids[optimal_index] + 1} shelf {shelf_ids[optimal_index] + 1}."), \
@@ -80,6 +96,8 @@ def retrieve_pallet(racks, category):
     elif len(bay_ids) == 1:
         retrieval_time, distance_covered = calculate_retrieval_time(bay_ids[0], shelf_ids[0])
         racks[rack_ids[0]].bays[bay_ids[0]].shelves[shelf_ids[0]].remove_pallet(pallets[0])
+        access_count.loc[(access_count['Rack'] == rack_ids[0] + 1) & (
+                access_count['Bay'] == bay_ids[0] + 1), 'Access_Count'] += 1
         return f"Retrieved pallet of {pallets[0].category} from rack {rack_ids[0] + 1} bay {bay_ids[0] + 1} shelf {shelf_ids[0] + 1}", retrieval_time, distance_covered
     else:
         return "Pallet not found."
@@ -147,7 +165,7 @@ def add_preexisting_stock(racks, inputs, outputs):
                         break
                     else:
                         pallet = Europallet(category='Category A')
-                        add_pallet(rack, bay.bay_id, pallet)
+                        add_pallet(rack, bay.bay_id, pallet, None, log_access=False)
                         pallet_count += 1
 
     diff = 0
@@ -163,7 +181,7 @@ def add_preexisting_stock(racks, inputs, outputs):
                         break
                     else:
                         pallet = Europallet(category='Category B')
-                        add_pallet(rack, bay.bay_id, pallet)
+                        add_pallet(rack, bay.bay_id, pallet, None, log_access=False)
                         pallet_count += 1
 
     diff = 0
@@ -180,11 +198,23 @@ def add_preexisting_stock(racks, inputs, outputs):
                             break
                         else:
                             pallet = Europallet(category='Category C')
-                            add_pallet(rack, bay.bay_id, pallet)
+                            add_pallet(rack, bay.bay_id, pallet, None, log_access=False)
                             pallet_count += 1
 
+def create_heatmap(access_count, placement_type):
+    heatmap_data = access_count.pivot(index='Bay', columns='Rack', values='Access_Count')
 
-def optimize_placement(racks, inputs_day_data):
+    plt.figure(figsize=(8, 6))
+
+    sns.heatmap(heatmap_data, annot=True, fmt="g", cmap="YlGnBu", cbar=True)
+
+    plt.title(f"Warehouse Access Heatmap for {placement_type} placement.")
+    plt.xlabel("Rack")
+    plt.ylabel("Bay")
+    plt.gca().invert_yaxis()
+    plt.show()
+
+def optimize_placement(racks, inputs_day_data, access_count):
     day_placement_time = 0
     day_placement_time_a = 0
     day_placement_time_b = 0
@@ -204,7 +234,7 @@ def optimize_placement(racks, inputs_day_data):
                     break
                 for rack in racks:
                     pallet = Europallet(category)
-                    _, placement_time, distance_covered = add_pallet(rack, bay_id, pallet)
+                    _, placement_time, distance_covered = add_pallet(rack, bay_id, pallet, access_count, log_access=True)
                     if placement_time != 0 and distance_covered != 0:
                         print(_)
                         day_placement_time += placement_time
@@ -219,7 +249,7 @@ def optimize_placement(racks, inputs_day_data):
                     break
                 for rack in racks:
                     pallet = Europallet(category)
-                    _, placement_time, distance_covered = add_pallet(rack, bay_id, pallet)
+                    _, placement_time, distance_covered = add_pallet(rack, bay_id, pallet, access_count, log_access=True)
                     if placement_time != 0 and distance_covered != 0:
                         print(_)
                         day_placement_time += placement_time
@@ -234,7 +264,7 @@ def optimize_placement(racks, inputs_day_data):
                     break
                 for rack in racks:
                     pallet = Europallet(category)
-                    _, placement_time, distance_covered = add_pallet(rack, bay_id, pallet)
+                    _, placement_time, distance_covered = add_pallet(rack, bay_id, pallet, access_count, log_access=True)
                     if placement_time != 0 and distance_covered != 0:
                         print(_)
                         day_placement_time += placement_time
@@ -265,6 +295,10 @@ def simulate_with_initial_placement(racks, inputs, outputs):
     total_retrieval_distance_covered_a = 0
     total_retrieval_distance_covered_b = 0
     total_retrieval_distance_covered_c = 0
+    access_count = inputs.groupby(['Rack', 'Bay']).size().reset_index(name='Access_Count')
+    access_count['Rack'] = access_count['Rack'].str.replace('Rack ', '')
+    access_count = access_count.astype('int')
+    access_count['Access_Count'] = 0
 
     print("\n\n Simulating with initial placement: \n\n")
 
@@ -282,23 +316,24 @@ def simulate_with_initial_placement(racks, inputs, outputs):
             pallet = Europallet(category=category)
             if category == 'Category C':
                 shelf = row['Shelf']
-                _, placement_time, distance_covered = add_pallet(racks[rack - 1], bay - 1, pallet, shelf - 1)
+                _, placement_time, distance_covered = add_pallet(racks[rack - 1], bay - 1, pallet, access_count, shelf - 1,
+                                                                 log_access=True)
                 while placement_time == 0:
                     if bay < BAYS_PER_RACK:
                         bay += 1
                     elif bay == BAYS_PER_RACK:
                         bay = 1
-                    _, placement_time, distance_covered = add_pallet(racks[rack - 1], bay - 1, pallet)
+                    _, placement_time, distance_covered = add_pallet(racks[rack - 1], bay - 1, pallet, access_count, log_access=True)
                 total_placement_time_c += placement_time
                 total_placement_distance_covered_c += distance_covered
             else:
-                _, placement_time, distance_covered = add_pallet(racks[rack - 1], bay - 1, pallet)
+                _, placement_time, distance_covered = add_pallet(racks[rack - 1], bay - 1, pallet, access_count, log_access=True)
                 while placement_time == 0:
                     if bay < BAYS_PER_RACK:
                         bay += 1
                     elif bay == BAYS_PER_RACK:
                         bay = 1
-                    _, placement_time, distance_covered = add_pallet(racks[rack - 1], bay - 1, pallet)
+                    _, placement_time, distance_covered = add_pallet(racks[rack - 1], bay - 1, pallet, access_count, log_access=True)
                 if category == 'Category A':
                     total_placement_time_a += placement_time
                     total_placement_distance_covered_a += distance_covered
@@ -312,7 +347,7 @@ def simulate_with_initial_placement(racks, inputs, outputs):
 
         for index, row in outputs_day_data.iterrows():
             category = row['Category']
-            _, retrieval_time, distance_covered = retrieve_pallet(racks, category)
+            _, retrieval_time, distance_covered = retrieve_pallet(racks, category, access_count)
             print(_)
             if category == 'Category A':
                 total_retrieval_time_a += retrieval_time
@@ -332,6 +367,7 @@ def simulate_with_initial_placement(racks, inputs, outputs):
         total_placement_distance_covered += day_distance_covered_placement
         total_retrieval_distance_covered += day_distance_covered_retrieval
         print(f"Processed data for {date}")
+    create_heatmap(access_count, placement_type='initial')
     return (
         total_placement_time, total_placement_time_a, total_placement_time_b, total_placement_time_c,
         total_retrieval_time,
@@ -358,6 +394,10 @@ def simulate_with_optimized_placement(racks, inputs, outputs):
     total_retrieval_distance_covered_a = 0
     total_retrieval_distance_covered_b = 0
     total_retrieval_distance_covered_c = 0
+    access_count = inputs.groupby(['Rack', 'Bay']).size().reset_index(name='Access_Count')
+    access_count['Rack'] = access_count['Rack'].str.replace('Rack ', '')
+    access_count = access_count.astype('int')
+    access_count['Access_Count'] = 0
 
     print("\n\n Simulating with optimized placement: \n\n")
 
@@ -368,11 +408,11 @@ def simulate_with_optimized_placement(racks, inputs, outputs):
         add_preexisting_stock(racks, inputs_day_data, outputs_day_data)
 
         day_placement_time, day_placement_time_a, day_placement_time_b, day_placement_time_c, day_distance_covered_placement, day_distance_covered_placement_a, day_distance_covered_placement_b, day_distance_covered_placement_c = optimize_placement(
-            racks, inputs_day_data)
+            racks, inputs_day_data, access_count)
 
         for index, row in outputs_day_data.iterrows():
             category = row['Category']
-            _, retrieval_time, distance_covered = retrieve_pallet(racks, category)
+            _, retrieval_time, distance_covered = retrieve_pallet(racks, category, access_count)
             print(_)
             if category == 'Category A':
                 total_retrieval_time_a += retrieval_time
@@ -398,9 +438,11 @@ def simulate_with_optimized_placement(racks, inputs, outputs):
         total_placement_distance_covered_c += day_distance_covered_placement_c
         total_retrieval_distance_covered += day_distance_covered_retrieval
         print(f"Processed data for {date}")
+    create_heatmap(access_count, placement_type='optimized')
     return (
-    total_placement_time, total_placement_time_a, total_placement_time_b, total_placement_time_c, total_retrieval_time,
-    total_retrieval_time_a, total_retrieval_time_b, total_retrieval_time_c, total_placement_distance_covered,
-    total_placement_distance_covered_a, total_placement_distance_covered_b, total_placement_distance_covered_c,
-    total_retrieval_distance_covered, total_retrieval_distance_covered_a, total_retrieval_distance_covered_b,
-    total_retrieval_distance_covered_c)
+        total_placement_time, total_placement_time_a, total_placement_time_b, total_placement_time_c,
+        total_retrieval_time,
+        total_retrieval_time_a, total_retrieval_time_b, total_retrieval_time_c, total_placement_distance_covered,
+        total_placement_distance_covered_a, total_placement_distance_covered_b, total_placement_distance_covered_c,
+        total_retrieval_distance_covered, total_retrieval_distance_covered_a, total_retrieval_distance_covered_b,
+        total_retrieval_distance_covered_c)
