@@ -34,7 +34,7 @@ Where $b_{rack} \div 2$ is the distance needed for the forklift to get centered 
 
 I also took into account the time need for the forklift to place/retrieve a pallet on a shelf. I set it to $t_{placement} = t_{retrieval} = 1 s$.  
 
-Regarding the stock defecit that might exist, there is  the `add_preexisting_stock` function which is called at the beginning of each day, and it stocks the warehouse if needed. The placement retrieval times of this function are not taken into account, since it's the same both for the initial and the optimized placement.
+Regarding the stock deficit that might exist, there is  the `add_preexisting_stock` function which is called at the beginning of each day, and it stocks the warehouse if needed. The placement retrieval times of this function are not taken into account, since it's the same both for the initial and the optimized placement.
 
 
 # Optimization strategy
@@ -128,7 +128,7 @@ Optimized placement distance = 1757.5 meters
 
 Optimized retrieval distance = 1775.0 meters
 
-Total distance defecit = 106.2 meters
+Total distance difference = -106.2 meters
 
 The distance might have increased, but the time has been decreased due to reduced lift times
 
@@ -161,3 +161,15 @@ Total distance covered with optimized placement: 10042.0 meters
 **Total time gain = 198.9 - 179.7 = 19.2 minutes**
 
 **Total distance gain = 10518 - 10042 = 476 meters**
+
+![category-times](./figs/category-times.png)
+
+![category-distances](./figs/category-distances.png)
+
+![heatmap-initial](./figs/heatmap-initial.png)
+
+![heatmap-optimized](./figs/heatmap-optimized.png)
+*Note: the increased activity on rack 1 bay 10 is due to the handling of the stock deficit for each day.*
+
+As we can see from the heatmaps, the optimized solution follows a more balanced 
+approach between placement and retrieval times. 
