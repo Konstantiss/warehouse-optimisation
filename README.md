@@ -11,6 +11,7 @@
 - **Category A**: Only placed on the bottom shelves.
 - **Category B**: Only placed on the top shelves.
 - **Category C**: Can be placed on any shelf.
+- 
 Goods are delivered and retrieved from the warehouse with a designated drop-off area at one end of the aisle and a pickup area at the other end. Logs of placements and retrievals for a month. During a typical day, goods to be delivered to the warehouse are the first to be positioned and then the retrieval process starts.
 
 
